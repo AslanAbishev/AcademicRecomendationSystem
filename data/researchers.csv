@@ -1,0 +1,7 @@
+researcher_id,name,phd_year,domain,region,career_stage,h_index,publication_count,keywords,skills,languages,goals
+1,Aruzhan Sarsembayeva,2024,NLP,Astana,phd_candidate,1,2,"nlp|llm|scientometrics|recommender systems","python|pytorch|transformers|data analysis","en|ru|kz","find collaborators for dissertation and improve visibility"
+2,Timur Zhakupov,2021,Computer Vision,Almaty,postdoc,4,9,"computer vision|multimodal learning|medical imaging","python|deep learning|mlops|docker","en|ru","join interdisciplinary grant and publish in q1 journals"
+3,Dana Bekmurat,2025,Recommender Systems,Astana,phd_candidate,0,1,"recommender systems|fairness|graphs|academic ranking","python|networkx|fastapi|experimentation","en|ru|kz","build fair feed algorithms and find mentor"
+4,Asel Nurpeissova,2018,Bioinformatics,Astana,assistant_professor,12,24,"bioinformatics|genomics|graph learning|knowledge graphs","python|r|graph neural networks|mentoring","en|ru","mentor young researchers and launch collaborations"
+5,Nursultan Akhmetov,2020,Data Science,Karaganda,postdoc,6,14,"tabular ml|causal inference|fairness|education analytics","python|xgboost|statistics|sql","en|ru","co-author fairness paper and expand research network"
+6,Madina Ospanova,2023,Information Retrieval,Almaty,phd_candidate,2,4,"information retrieval|scholarly search|citation recommendation|bert","python|elasticsearch|transformers|evaluation","en|ru","improve academic search models and present at conferences"
