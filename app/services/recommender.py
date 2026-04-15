@@ -8,11 +8,17 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from app.config import settings
-from app.data_loader import load_opportunities, load_researchers
+from app.data_loader import (
+    load_openalex_researchers,
+    load_openalex_works,
+    load_opportunities,
+    load_researchers,
+)
 from app.schemas import (
     CollaboratorRecommendation,
     DashboardAnalytics,
     DashboardResponse,
+    OpportunityCatalogItem,
     OpportunityRecommendation,
     RecommendationExplanation,
     ResearcherSummary,
@@ -40,6 +46,9 @@ class ECRRecommenderService:
     def __init__(self) -> None:
         self.researchers = load_researchers().copy()
         self.opportunities = load_opportunities().copy()
+        self.openalex_researchers = load_openalex_researchers().copy()
+        self.openalex_works = load_openalex_works().copy()
+        self.researchers["external_context"] = self.researchers.apply(self._build_external_context, axis=1)
         self.researchers["profile_text"] = self.researchers.apply(self._build_researcher_text, axis=1)
         self.opportunities["content_text"] = self.opportunities.apply(self._build_opportunity_text, axis=1)
         self.profile_space = self._fit_vector_space(
@@ -49,6 +58,18 @@ class ECRRecommenderService:
     def list_researchers(self) -> list[ResearcherSummary]:
         records = self.researchers.to_dict(orient="records")
         return [ResearcherSummary(**record) for record in records]
+
+    def list_opportunities(self) -> list[OpportunityCatalogItem]:
+        records = self.opportunities.to_dict(orient="records")
+        return [
+            OpportunityCatalogItem(
+                **{
+                    **record,
+                    "ecr_friendly": str(record["ecr_friendly"]).lower() == "true",
+                }
+            )
+            for record in records
+        ]
 
     def get_dashboard(self, researcher_id: int, top_k: int = 6) -> DashboardResponse:
         researcher = self._get_researcher_row(researcher_id)
@@ -93,6 +114,7 @@ class ECRRecommenderService:
                     score=final_score,
                     region=row["region"],
                     deadline=row["deadline"],
+                    description=row["description"],
                     explanation=explanation,
                 )
             )
@@ -144,6 +166,8 @@ class ECRRecommenderService:
         return VectorSpace(vectorizer=vectorizer, matrix=matrix)
 
     def _build_researcher_text(self, row: pd.Series) -> str:
+        publication_bucket = self._publication_bucket(int(row["publication_count"]))
+        career_stage_signal = "early-career researcher" if self._is_ecr(int(row["phd_year"])) else "established researcher"
         return " ".join(
             [
                 str(row["domain"]),
@@ -152,6 +176,9 @@ class ECRRecommenderService:
                 str(row["languages"]),
                 str(row["goals"]),
                 str(row["region"]),
+                publication_bucket,
+                career_stage_signal,
+                str(row.get("external_context", "")),
             ]
         )
 
@@ -182,6 +209,15 @@ class ECRRecommenderService:
 
     def _is_ecr(self, phd_year: int) -> bool:
         return CURRENT_YEAR - int(phd_year) <= 5
+
+    def _publication_bucket(self, publication_count: int) -> str:
+        if publication_count <= 2:
+            return "cold-start profile"
+        if publication_count <= 7:
+            return "emerging publication record"
+        if publication_count <= 15:
+            return "growing publication record"
+        return "established publication record"
 
     def _type_diversity_bonus(self, opportunity_type: str, seen_types: dict[str, int]) -> float:
         return 1.0 if seen_types.get(opportunity_type, 0) == 0 else 0.55
@@ -263,4 +299,61 @@ class ECRRecommenderService:
             ecr_status=ecr_status,
             publication_count=publication_count,
             collaboration_readiness=round(collaboration_readiness, 4),
+        )
+
+    def _build_external_context(self, researcher: pd.Series) -> str:
+        fragments: list[str] = []
+
+        author_match = self._match_openalex_author_context(researcher)
+        if author_match:
+            fragments.append(author_match)
+
+        work_match = self._match_openalex_work_context(researcher)
+        if work_match:
+            fragments.append(work_match)
+
+        return " ".join(fragments)
+
+    def _match_openalex_author_context(self, researcher: pd.Series) -> str:
+        if self.openalex_researchers.empty:
+            return ""
+
+        keywords = set(_split_tags(researcher["keywords"]))
+        ranked: list[tuple[int, pd.Series]] = []
+        for _, candidate in self.openalex_researchers.iterrows():
+            candidate_topics = set(_split_tags(candidate.get("topics", "")))
+            overlap = len(keywords & candidate_topics)
+            if overlap:
+                ranked.append((overlap, candidate))
+
+        if not ranked:
+            return ""
+
+        ranked.sort(key=lambda item: (item[0], item[1].get("works_count", 0)), reverse=True)
+        best = ranked[0][1]
+        return (
+            f"openalex_author_context {best.get('name', '')} "
+            f"{best.get('topics', '')} {best.get('institutions', '')}"
+        )
+
+    def _match_openalex_work_context(self, researcher: pd.Series) -> str:
+        if self.openalex_works.empty:
+            return ""
+
+        keywords = set(_split_tags(researcher["keywords"]))
+        ranked: list[tuple[int, pd.Series]] = []
+        for _, work in self.openalex_works.iterrows():
+            work_topics = set(_split_tags(work.get("topics", "")))
+            overlap = len(keywords & work_topics)
+            if overlap:
+                ranked.append((overlap, work))
+
+        if not ranked:
+            return ""
+
+        ranked.sort(key=lambda item: (item[0], item[1].get("cited_by_count", 0)), reverse=True)
+        best = ranked[0][1]
+        return (
+            f"openalex_work_context {best.get('title', '')} "
+            f"{best.get('topics', '')} {best.get('abstract_excerpt', '')}"
         )

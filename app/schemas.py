@@ -3,15 +3,41 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-class ResearcherSummary(BaseModel):
-    researcher_id: int
+class TopicSummary(BaseModel):
     name: str
-    phd_year: int
-    domain: str
-    region: str
-    career_stage: str
+    score: float = 0.0
+
+
+class ResearcherSearchResult(BaseModel):
+    researcher_id: str
+    name: str
+    works_count: int
+    cited_by_count: int
+    affiliation: str
+    country_code: str | None = None
+    topics: list[str] = Field(default_factory=list)
+
+
+class ResearcherProfile(BaseModel):
+    researcher_id: str
+    name: str
+    works_count: int
+    cited_by_count: int
     h_index: int
-    publication_count: int
+    affiliation: str
+    country_code: str | None = None
+    homepage_url: str | None = None
+    orcid: str | None = None
+    topics: list[TopicSummary] = Field(default_factory=list)
+
+
+class RecentWorkSummary(BaseModel):
+    work_id: str
+    title: str
+    year: int | None = None
+    cited_by_count: int = 0
+    venue: str | None = None
+    topics: list[str] = Field(default_factory=list)
 
 
 class RecommendationExplanation(BaseModel):
@@ -24,18 +50,21 @@ class RecommendationExplanation(BaseModel):
 
 class OpportunityRecommendation(BaseModel):
     opportunity_id: str
-    opportunity_type: Literal["journal", "conference", "grant", "mentor"]
+    opportunity_type: Literal["journal", "conference", "repository"]
     title: str
     score: float
     region: str
-    deadline: str
+    deadline: str | None = None
+    description: str
+    homepage_url: str | None = None
     explanation: RecommendationExplanation
 
 
 class CollaboratorRecommendation(BaseModel):
-    researcher_id: int
+    researcher_id: str
     name: str
-    domain: str
+    affiliation: str
+    country_code: str | None = None
     score: float
     explanation: RecommendationExplanation
 
@@ -49,7 +78,8 @@ class DashboardAnalytics(BaseModel):
 
 
 class DashboardResponse(BaseModel):
-    researcher: ResearcherSummary
+    researcher: ResearcherProfile
+    recent_works: list[RecentWorkSummary] = Field(default_factory=list)
     opportunities: list[OpportunityRecommendation]
     collaborators: list[CollaboratorRecommendation]
     analytics: DashboardAnalytics

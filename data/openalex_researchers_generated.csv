@@ -1,0 +1,7 @@
+author_id,name,works_count,topics,institutions,countries
+A1,Eva Blomqvist,42,"recommender systems|information retrieval|fairness|scholarly communication","Linkoping University",SE
+A2,Jie Tang,88,"graphs|scientific collaboration|data mining|academic networks","Tsinghua University",CN
+A3,Min-Yen Kan,57,"scientometrics|scholarly communication|digital libraries|metadata","National University of Singapore",SG
+A4,Dan Wu,31,"health informatics|fairness|multilingual ai|privacy","Peking University",CN
+A5,Preslav Nakov,76,"nlp|low resource ai|evaluation|language technology","MBZUAI",AE
+A6,Steffen Staab,64,"knowledge graphs|scholarly communication|metadata quality|open science","University of Stuttgart",DE

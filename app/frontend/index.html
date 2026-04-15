@@ -1,0 +1,276 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECR Academic Visibility MVP</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Dissertation MVP</p>
+        <h1>ECR Academic Visibility Dashboard</h1>
+        <p class="hero-text">
+          Search a real researcher through OpenAlex and inspect a live dashboard with recent works,
+          real venue recommendations, and collaborator candidates.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="/docs">Open API Docs</a>
+        </div>
+      </div>
+      <div class="hero-panel">
+        <p class="panel-label">Live data mode</p>
+        <h2>Search researcher</h2>
+        <p>Type a real author name or topic and the app will query OpenAlex in real time.</p>
+        <div class="search-box">
+          <input id="search-input" type="text" placeholder="e.g. Ji-Rong Wen, Jie Tang, information retrieval">
+          <button id="search-button" class="button button-secondary" type="button">Search</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard-layout">
+      <section class="card filters-card">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Search Results</p>
+            <h3>Researchers</h3>
+          </div>
+          <span id="researcher-count" class="badge">0 results</span>
+        </div>
+        <div id="researcher-list" class="researcher-list"></div>
+      </section>
+
+      <section class="card main-card">
+        <div id="dashboard-state" class="empty-state">
+          <h3>Search for a real researcher to build the dashboard</h3>
+          <p>
+            This version does not use invented profiles or invented opportunity data.
+            All dashboard content is derived from live OpenAlex author, work, and source metadata.
+          </p>
+        </div>
+
+        <div id="dashboard-content" class="hidden">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Dashboard</p>
+              <h3 id="profile-name">Researcher Name</h3>
+            </div>
+            <span id="profile-stage" class="badge">ECR</span>
+          </div>
+
+          <div id="profile-summary" class="profile-summary"></div>
+          <div class="metrics-grid" id="metrics-grid"></div>
+
+          <div class="two-column">
+            <section>
+              <div class="section-head slim">
+                <div>
+                  <p class="section-kicker">Recent Works</p>
+                  <h4>OpenAlex works</h4>
+                </div>
+              </div>
+              <div id="works-list" class="stack-list"></div>
+            </section>
+
+            <section>
+              <div class="section-head slim">
+                <div>
+                  <p class="section-kicker">Visibility Feed</p>
+                  <h4>Real sources</h4>
+                </div>
+              </div>
+              <div id="opportunity-list" class="stack-list"></div>
+            </section>
+          </div>
+
+          <section class="collaborator-section">
+            <div class="section-head slim">
+              <div>
+                <p class="section-kicker">Matchmaking</p>
+                <h4>Collaborator candidates</h4>
+              </div>
+            </div>
+            <div id="collaborator-list" class="stack-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="card sidebar-card">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">How it works</p>
+            <h3>Real data pipeline</h3>
+          </div>
+        </div>
+        <div class="catalog-list">
+          <article class="catalog-item">
+            <h4>Researcher search</h4>
+            <p>OpenAlex author search is used instead of a static local researcher list.</p>
+          </article>
+          <article class="catalog-item">
+            <h4>Recent works</h4>
+            <p>The dashboard pulls the researcher works from OpenAlex to build topic context.</p>
+          </article>
+          <article class="catalog-item">
+            <h4>Opportunity catalog</h4>
+            <p>Venue recommendations come from real OpenAlex sources, not invented grants or mentors.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      researchers: [],
+      selectedResearcherId: null,
+    };
+
+    const byId = (id) => document.getElementById(id);
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Request failed: ${url}`);
+      }
+      return response.json();
+    }
+
+    function metricCard(label, value) {
+      return `
+        <article class="metric-card">
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </article>
+      `;
+    }
+
+    function renderResearchers() {
+      const container = byId("researcher-list");
+      container.innerHTML = "";
+      byId("researcher-count").textContent = `${state.researchers.length} results`;
+
+      state.researchers.forEach((researcher) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `researcher-item ${state.selectedResearcherId === researcher.researcher_id ? "active" : ""}`;
+        button.innerHTML = `
+          <strong>${researcher.name}</strong>
+          <span>${researcher.affiliation}</span>
+          <span>${researcher.works_count} works • ${researcher.cited_by_count} citations</span>
+        `;
+        button.addEventListener("click", () => selectResearcher(researcher.researcher_id));
+        container.appendChild(button);
+      });
+    }
+
+    function renderDashboard(data) {
+      byId("dashboard-state").classList.add("hidden");
+      byId("dashboard-content").classList.remove("hidden");
+
+      byId("profile-name").textContent = data.researcher.name;
+      byId("profile-stage").textContent = data.analytics.ecr_status ? "ECR-like" : "Established";
+      byId("profile-summary").innerHTML = `
+        <div class="summary-block">
+          <span>Affiliation</span>
+          <strong>${data.researcher.affiliation}</strong>
+        </div>
+        <div class="summary-block">
+          <span>ORCID</span>
+          <strong>${data.researcher.orcid || "Not available"}</strong>
+        </div>
+        <div class="summary-block">
+          <span>Top topics</span>
+          <strong>${data.researcher.topics.map((topic) => topic.name).join(", ") || "Not available"}</strong>
+        </div>
+      `;
+
+      byId("metrics-grid").innerHTML = [
+        metricCard("Profile strength", data.analytics.profile_strength),
+        metricCard("Cold-start risk", data.analytics.cold_start_risk),
+        metricCard("Works", data.analytics.publication_count),
+        metricCard("Collab readiness", data.analytics.collaboration_readiness),
+      ].join("");
+
+      byId("works-list").innerHTML = data.recent_works.map((item) => `
+        <article class="feed-card">
+          <div class="feed-header">
+            <span class="type-pill">work</span>
+            <strong>${item.year || "n/a"}</strong>
+          </div>
+          <h4>${item.title}</h4>
+          <p>${item.venue || "Unknown venue"}</p>
+          <div class="feed-meta">${item.cited_by_count} citations</div>
+        </article>
+      `).join("");
+
+      byId("opportunity-list").innerHTML = data.opportunities.map((item) => `
+        <article class="feed-card">
+          <div class="feed-header">
+            <span class="type-pill">${item.opportunity_type}</span>
+            <strong>${item.score}</strong>
+          </div>
+          <h4>${item.title}</h4>
+          <p>${item.description}</p>
+          <div class="feed-meta">${item.region}</div>
+          <ul class="compact-list">
+            ${item.explanation.reasons.map((reason) => `<li>${reason}</li>`).join("")}
+          </ul>
+        </article>
+      `).join("");
+
+      byId("collaborator-list").innerHTML = data.collaborators.map((item) => `
+        <article class="feed-card">
+          <div class="feed-header">
+            <span class="type-pill">collaborator</span>
+            <strong>${item.score}</strong>
+          </div>
+          <h4>${item.name}</h4>
+          <p>${item.affiliation}</p>
+          <div class="feed-meta">${item.country_code || "Unknown country"}</div>
+          <ul class="compact-list">
+            ${item.explanation.reasons.map((reason) => `<li>${reason}</li>`).join("")}
+          </ul>
+        </article>
+      `).join("");
+    }
+
+    async function performSearch() {
+      const query = byId("search-input").value.trim();
+      if (!query) {
+        return;
+      }
+      const payload = await fetchJson(`/researchers/search?q=${encodeURIComponent(query)}`);
+      state.researchers = payload;
+      state.selectedResearcherId = null;
+      renderResearchers();
+      if (payload.length > 0) {
+        await selectResearcher(payload[0].researcher_id);
+      }
+    }
+
+    async function selectResearcher(researcherId) {
+      state.selectedResearcherId = researcherId;
+      renderResearchers();
+      const dashboard = await fetchJson(`/researchers/${researcherId}/dashboard`);
+      renderDashboard(dashboard);
+    }
+
+    byId("search-button").addEventListener("click", () => performSearch().catch(showError));
+    byId("search-input").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        performSearch().catch(showError);
+      }
+    });
+
+    function showError(error) {
+      byId("dashboard-state").innerHTML = `<h3>Unable to load dashboard</h3><p>${error.message}</p>`;
+    }
+  </script>
+</body>
+</html>
+
+
