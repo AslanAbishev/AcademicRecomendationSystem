@@ -1,6 +1,24 @@
 # Academic Visibility Platform
 
+[![CI and release image](https://github.com/AslanAbishev/AcademicRecomendationSystem/actions/workflows/ci.yml/badge.svg)](https://github.com/AslanAbishev/AcademicRecomendationSystem/actions/workflows/ci.yml)
+
 Project for the dissertation topic: "Machine learning model for personalized promotion of an early-career researcher's academic profile in digital academic networks."
+
+Repository: https://github.com/AslanAbishev/AcademicRecomendationSystem
+
+## Technology rationale
+
+| Technology | Role | Selection reason |
+| --- | --- | --- |
+| Python 3.12 | Main language | Mature data and ML ecosystem, rapid research prototyping, readable experiments |
+| FastAPI | API and static application host | Typed request models, automatic OpenAPI documentation, simple testing |
+| PostgreSQL + pgvector | Research data and vector search | Relational integrity with vector similarity in one reproducible service |
+| OpenAlex | Publication and author metadata | Open scholarly graph with documented API and real identifiers |
+| scikit-learn | TF-IDF, BM25 support, LSA/SVD and evaluation | Stable baselines that can be compared with transformer and graph methods |
+| PyTorch + Transformers | SciBERT, SPECTER2 and GraphSAGE experiments | Established scientific ML tooling and reusable pretrained models |
+| Docker Compose | Reproducible local environment | Consistent API, database, Redis, and optional ML profile |
+| pytest | Automated tests | Lightweight unit and API testing with fixtures and temporary storage |
+| GitHub Actions | CI and tagged release images | Native integration with the public repository and pull requests |
 
 ## Current scope
 
@@ -109,6 +127,27 @@ API:
 ```bash
 python -m pytest
 ```
+
+The current suite contains 35 automated tests covering the API, registration,
+recommendation logic, temporal dataset splitting, embeddings, and graph export.
+
+## CI/CD
+
+The workflow is stored in `.github/workflows/ci.yml`.
+
+- Every push to `main` and every pull request runs syntax verification, critical Ruff checks, and all pytest tests.
+- After tests pass, GitHub Actions builds a lightweight API Docker image with `INSTALL_ML=false`.
+- Tags matching `v*` trigger a delivery job that publishes the verified image to GitHub Container Registry.
+- Heavy transformer and GraphSAGE experiments remain in the optional `ml` Compose profile and are not downloaded during the normal CI quality gate.
+
+This design separates fast code validation from resource-intensive dissertation experiments while keeping tagged releases reproducible.
+
+## Repository workflow
+
+- Use short-lived `feature/*` and `fix/*` branches.
+- Open a pull request for review before merging to `main`.
+- Track defects and research improvements with the supplied GitHub issue templates.
+- Follow the reproducibility and data-handling rules in `CONTRIBUTING.md`.
 
 For manual UI checks without modifying real accounts, run
 `python -m tests.ui_preview` and open `http://127.0.0.1:8001/`.
@@ -258,6 +297,10 @@ This version aligns with the literature review and technical concept because it 
 - It explains recommendations through comparable TF-IDF, BM25, LSA/SVD, semantic hashing, hybrid, graph, diversity, and fairness signals.
 - It tracks whether promotion actions improve profile metrics over time.
 - It provides multiple baselines for future SPECTER2/SciBERT/GraphSAGE experiments.
+
+## License
+
+This project is released under the MIT License. See `LICENSE`.
 
 ## Current experiment status
 
