@@ -5,3 +5,12 @@ __pycache__
 *.pyc
 data/papers.csv
 data/recommendations.csv
+data/registered_profiles.json
+data/users.json
+data/promotion_snapshots.json
+data/promotion_actions.json
+data/*.jsonl
+data/splits/
+data/embeddings/
+data/graphsage/
+*.npz

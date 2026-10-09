@@ -1,0 +1,5 @@
+torch>=2.5,<3
+transformers>=4.48,<5
+sentence-transformers>=3.4,<5
+torch-geometric>=2.6,<3
+tqdm>=4.66,<5

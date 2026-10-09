@@ -1,276 +1,182 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ECR Academic Visibility MVP</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <meta name="theme-color" content="#f6f7f9">
+  <title>Academic Visibility</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260921">
+  <script src="/static/workspace.js?v=20260921" defer></script>
+  <script src="/static/app.js?v=20260921" defer></script>
 </head>
 <body>
-  <div class="page-shell">
-    <header class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">Dissertation MVP</p>
-        <h1>ECR Academic Visibility Dashboard</h1>
-        <p class="hero-text">
-          Search a real researcher through OpenAlex and inspect a live dashboard with recent works,
-          real venue recommendations, and collaborator candidates.
-        </p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="/docs">Open API Docs</a>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4h6l2 2 2-2h6v15h-6l-2 2-2-2H4zM12 6v15"/></symbol>
+    <symbol id="i-discover" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m16 8-2 6-6 2 2-6z"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M18 15a5 5 0 0 1 3 5"/></symbol>
+    <symbol id="i-growth" viewBox="0 0 24 24"><path d="M4 3v17h17M7 15l5-5 4 2 5-8M16 4h5v5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M10 4H4v16h6M10 12h11m-4-4 4 4-4 4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  </svg>
+  <a class="skip-link" href="#workspace-main">Skip to content</a>
+  <section id="onboarding-shell" class="auth-layout">
+    <aside class="auth-story">
+      <a class="brand-lockup" href="#/login"><span class="brand-mark">av<span>.</span></span><strong>Academic<br>Visibility</strong></a>
+      <div class="auth-editorial">
+        <p class="eyebrow">A workspace for your research</p>
+        <h1>Your work.<br> Better connected.</h1>
+        <p>Find the papers, people and publishing opportunities that move your research forward.</p>
+        <div class="auth-features">
+          <div><span>01</span><p>Connect your academic profile</p></div>
+          <div><span>02</span><p>Discover relevant research and collaborators</p></div>
+          <div><span>03</span><p>Build a plan. Follow your progress.</p></div>
         </div>
       </div>
-      <div class="hero-panel">
-        <p class="panel-label">Live data mode</p>
-        <h2>Search researcher</h2>
-        <p>Type a real author name or topic and the app will query OpenAlex in real time.</p>
-        <div class="search-box">
-          <input id="search-input" type="text" placeholder="e.g. Ji-Rong Wen, Jie Tang, information retrieval">
-          <button id="search-button" class="button button-secondary" type="button">Search</button>
-        </div>
-      </div>
-    </header>
-
-    <main class="dashboard-layout">
-      <section class="card filters-card">
-        <div class="section-head">
-          <div>
-            <p class="section-kicker">Search Results</p>
-            <h3>Researchers</h3>
+      <p class="auth-footnote">Built around your research, with data from ORCID and OpenAlex.</p>
+    </aside>
+    <main class="auth-main">
+      <nav class="auth-tabs" aria-label="Account access">
+        <a href="#/login" data-auth-view="login" aria-current="page">Sign in</a>
+        <a href="#/register" data-auth-view="register">Create account</a>
+      </nav>
+      <section id="login-panel" class="auth-form-panel">
+        <p class="section-kicker">Your research workspace</p>
+        <h2>Welcome back</h2>
+        <p class="form-intro">Sign in to your profile and personalized recommendations.</p>
+        <form id="login-form">
+          <div class="form-grid single-column">
+            <label><span>Email address</span><input name="email" type="email" autocomplete="username" placeholder="you@university.edu" required></label>
+            <label><span>Password</span><input name="password" type="password" autocomplete="current-password" minlength="8" required></label>
           </div>
-          <span id="researcher-count" class="badge">0 results</span>
-        </div>
-        <div id="researcher-list" class="researcher-list"></div>
+          <button class="button button-primary auth-submit" type="submit">Sign in <svg class="icon"><use href="#i-arrow"/></svg></button>
+          <p id="login-status" class="form-status" role="status"></p>
+        </form>
+        <p class="auth-switch">New here? <a href="#/register">Create your account</a></p>
       </section>
-
-      <section class="card main-card">
-        <div id="dashboard-state" class="empty-state">
-          <h3>Search for a real researcher to build the dashboard</h3>
-          <p>
-            This version does not use invented profiles or invented opportunity data.
-            All dashboard content is derived from live OpenAlex author, work, and source metadata.
-          </p>
-        </div>
-
-        <div id="dashboard-content" class="hidden">
-          <div class="section-head">
-            <div>
-              <p class="section-kicker">Dashboard</p>
-              <h3 id="profile-name">Researcher Name</h3>
+      <section id="register-panel" class="auth-form-panel hidden">
+        <p class="section-kicker">Start with your profile</p>
+        <h2>A place for your next chapter</h2>
+        <p class="form-intro">Connect ORCID to find your publications and research topics. You can get started without it.</p>
+        <form id="registration-form">
+          <div class="form-grid">
+            <label class="full-span"><span>Full name</span><input name="full_name" autocomplete="name" required></label>
+            <label><span>Email address</span><input name="email" type="email" autocomplete="username" required></label>
+            <label><span>Password</span><input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required></label>
+            <label class="full-span"><span>ORCID <small>Optional</small></span><input name="orcid_id" placeholder="0000-0000-0000-0000"><small>We use this to find your public research record.</small></label>
+          </div>
+          <details class="optional-fields">
+            <summary>Add research interests and other profiles <span>Optional</span></summary>
+            <div class="form-grid">
+              <label><span>University or organization</span><input name="affiliation" autocomplete="organization" placeholder="If missing from your profile"></label>
+              <label><span>Research area</span><input name="academic_field" placeholder="e.g. Computer science"></label>
+              <label><span>Google Scholar URL</span><input name="google_scholar_url" type="url" placeholder="https://scholar.google.com/..."></label>
+              <label><span>ResearchGate URL</span><input name="researchgate_url" type="url" placeholder="https://www.researchgate.net/..."></label>
+              <label class="full-span"><span>Research keywords</span><input name="research_keywords" placeholder="e.g. information retrieval, recommender systems"><small>Separate keywords with commas. Helpful if you have no publications yet.</small></label>
+              <label class="full-span"><span>Publication goal</span><input name="publication_goals" placeholder="What would you like to work towards?"></label>
+              <label class="full-span"><span>About your research</span><textarea name="bio" rows="3" placeholder="A short introduction to your interests"></textarea></label>
             </div>
-            <span id="profile-stage" class="badge">ECR</span>
-          </div>
-
-          <div id="profile-summary" class="profile-summary"></div>
-          <div class="metrics-grid" id="metrics-grid"></div>
-
-          <div class="two-column">
-            <section>
-              <div class="section-head slim">
-                <div>
-                  <p class="section-kicker">Recent Works</p>
-                  <h4>OpenAlex works</h4>
-                </div>
-              </div>
-              <div id="works-list" class="stack-list"></div>
-            </section>
-
-            <section>
-              <div class="section-head slim">
-                <div>
-                  <p class="section-kicker">Visibility Feed</p>
-                  <h4>Real sources</h4>
-                </div>
-              </div>
-              <div id="opportunity-list" class="stack-list"></div>
-            </section>
-          </div>
-
-          <section class="collaborator-section">
-            <div class="section-head slim">
-              <div>
-                <p class="section-kicker">Matchmaking</p>
-                <h4>Collaborator candidates</h4>
-              </div>
-            </div>
-            <div id="collaborator-list" class="stack-list"></div>
-          </section>
-        </div>
-      </section>
-
-      <section class="card sidebar-card">
-        <div class="section-head">
-          <div>
-            <p class="section-kicker">How it works</p>
-            <h3>Real data pipeline</h3>
-          </div>
-        </div>
-        <div class="catalog-list">
-          <article class="catalog-item">
-            <h4>Researcher search</h4>
-            <p>OpenAlex author search is used instead of a static local researcher list.</p>
-          </article>
-          <article class="catalog-item">
-            <h4>Recent works</h4>
-            <p>The dashboard pulls the researcher works from OpenAlex to build topic context.</p>
-          </article>
-          <article class="catalog-item">
-            <h4>Opportunity catalog</h4>
-            <p>Venue recommendations come from real OpenAlex sources, not invented grants or mentors.</p>
-          </article>
-        </div>
+          </details>
+          <button class="button button-primary auth-submit" type="submit">Create account <svg class="icon"><use href="#i-arrow"/></svg></button>
+          <p id="registration-status" class="form-status" role="status"></p>
+        </form>
+        <div id="registration-result" class="hidden"></div>
       </section>
     </main>
+  </section>
+
+  <div id="app-shell" class="hidden">
+    <button id="sidebar-backdrop" class="sidebar-backdrop hidden" aria-label="Close navigation" type="button"></button>
+    <aside id="workspace-sidebar" class="workspace-sidebar">
+      <a class="brand-lockup" href="#/overview"><span class="brand-mark">av<span>.</span></span><strong>Academic<br>Visibility</strong></a>
+      <p class="nav-label">Workspace</p>
+      <nav class="workspace-nav" aria-label="Workspace navigation">
+        <a href="#/overview" data-view="overview"><svg class="icon"><use href="#i-grid"/></svg>Overview</a>
+        <a href="#/publications" data-view="publications"><svg class="icon"><use href="#i-book"/></svg>My publications<span id="nav-works-count" class="nav-count"></span></a>
+        <a href="#/recommendations" data-view="recommendations"><svg class="icon"><use href="#i-discover"/></svg>Discover research</a>
+        <a href="#/collaborators" data-view="collaborators"><svg class="icon"><use href="#i-people"/></svg>Collaborators</a>
+        <a href="#/growth" data-view="growth"><svg class="icon"><use href="#i-growth"/></svg>Growth plan</a>
+        <a href="#/profile" data-view="profile"><svg class="icon"><use href="#i-user"/></svg>My profile</a>
+      </nav>
+      <p class="nav-label">Explore</p>
+      <nav class="workspace-nav" aria-label="Research tools">
+        <a href="#/researchers" data-view="researchers"><svg class="icon"><use href="#i-search"/></svg>Find a researcher</a>
+        <a href="#/models" data-view="models"><svg class="icon"><use href="#i-settings"/></svg>Recommendation settings</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <a href="#/profile" class="sidebar-account"><span id="user-avatar" class="avatar">AV</span><div><strong id="current-user-name">Researcher</strong><small>Personal workspace</small></div></a>
+        <button id="switch-profile-button" class="logout-button" type="button"><svg class="icon"><use href="#i-exit"/></svg>Sign out</button>
+      </div>
+    </aside>
+    <div class="workspace-body">
+      <header class="workspace-topbar">
+        <div class="topbar-location"><button id="menu-button" class="icon-button menu-button" type="button" aria-label="Open navigation" aria-controls="workspace-sidebar" aria-expanded="false"><svg class="icon"><use href="#i-menu"/></svg></button><span>Workspace</span><span class="breadcrumb-divider">/</span><strong id="breadcrumb-title">Overview</strong></div>
+        <a class="topbar-search" href="#/researchers" aria-label="Find a researcher"><svg class="icon"><use href="#i-search"/></svg><span>Find a researcher</span></a>
+      </header>
+      <main id="workspace-main" class="workspace-main">
+        <div class="page-heading"><div><p class="section-kicker" id="page-eyebrow">Your workspace, at a glance</p><h1 id="page-title" tabindex="-1">Overview</h1><p id="page-description">A clear picture of your research and where to go next.</p></div><span class="workspace-label">Personal workspace</span></div>
+        <div id="app-notice" class="notice hidden" role="alert"><span id="app-notice-text"></span><button id="retry-button" class="button button-secondary" type="button">Try again</button><button id="dismiss-notice" class="icon-button" aria-label="Dismiss message" type="button">&times;</button></div>
+        <div id="comparison-banner" class="comparison-banner hidden"><span id="comparison-label">Viewing another researcher</span><button id="my-cabinet-button" class="button button-secondary" type="button">Back to my profile</button></div>
+        <div id="dashboard-state" class="empty-state hidden" role="status"><span class="loading-mark"></span><h3>Preparing your workspace</h3><p>Finding your publications and research recommendations. This may take a moment.</p></div>
+        <div id="dashboard-content" class="hidden">
+          <section data-page="overview" id="page-overview">
+            <div class="profile-welcome"><span id="profile-avatar" class="avatar avatar-large">AV</span><div><p class="section-kicker">Research profile</p><h2 id="profile-name">Your profile</h2><p id="overview-affiliation"></p></div><span id="profile-stage" class="badge">Researcher</span></div>
+            <div class="metrics-grid" id="metrics-grid"></div>
+            <div id="dashboard-insight" class="insight-strip"></div>
+            <div class="section-head"><h3>Continue your research</h3><span class="muted-inline">Your next steps</span></div>
+            <div class="quick-links">
+              <a href="#/recommendations"><svg class="icon"><use href="#i-discover"/></svg><h3>Find your next read</h3><p>Explore papers and venues related to your research.</p><span>Discover research <span aria-hidden="true">&rarr;</span></span></a>
+              <a href="#/collaborators"><svg class="icon"><use href="#i-people"/></svg><h3>Make a connection</h3><p>Find researchers with shared interests, nearby or globally.</p><span>Meet collaborators <span aria-hidden="true">&rarr;</span></span></a>
+              <a href="#/growth"><svg class="icon"><use href="#i-growth"/></svg><h3>Plan your next step</h3><p>Review suggested actions and track changes over time.</p><span>Open growth plan <span aria-hidden="true">&rarr;</span></span></a>
+            </div>
+            <div class="two-column overview-preview"><section class="surface"><div class="section-head"><h3>From your publications</h3><a href="#/publications">View all &rarr;</a></div><div id="overview-works"></div></section><section class="surface"><div class="section-head"><h3>People to explore</h3><a href="#/collaborators">View all &rarr;</a></div><div id="overview-people"></div></section></div>
+          </section>
+          <section data-page="publications" id="page-publications" class="hidden">
+            <div class="list-toolbar"><label class="search-field"><svg class="icon"><use href="#i-search"/></svg><input id="publication-search" type="search" aria-label="Filter your publications" placeholder="Search your publications"></label><span id="works-count" class="muted-inline"></span></div>
+            <div id="works-list" class="stack-list publication-list"></div><p id="works-empty-filter" class="empty-filter hidden">No publications match your search.</p>
+            <div id="works-pagination" class="pagination"></div>
+          </section>
+          <section data-page="recommendations" id="page-recommendations" class="hidden">
+            <div class="section-toolbar"><div class="subnav" aria-label="Recommendation type"><button type="button" class="active" data-discovery="papers" aria-pressed="true">Papers <span id="paper-count"></span></button><button type="button" data-discovery="venues" aria-pressed="false">Journals &amp; venues <span id="venue-count"></span></button></div><a href="#/models" class="model-link">Model: <strong id="active-model-label">SPECTER2</strong> &rarr;</a></div>
+            <div data-discovery-panel="papers"><div id="recommended-work-list" class="stack-list results-grid"></div></div>
+            <div data-discovery-panel="venues" class="hidden"><p class="section-note">Venues are ranked by research fit. Review their scope and submission requirements before submitting.</p><div id="opportunity-list" class="stack-list results-grid"></div></div>
+          </section>
+          <section data-page="collaborators" id="collaborator-section" class="hidden">
+            <div class="section-toolbar"><div class="scope-toggle" aria-label="Collaborator search scope"><button class="scope-button active" type="button" data-collaborator-scope="global" aria-pressed="true">Global</button><button class="scope-button" type="button" data-collaborator-scope="same_country" aria-pressed="false">Same country</button><button class="scope-button" type="button" data-collaborator-scope="same_affiliation" aria-pressed="false">Same institution</button></div><span id="collaborator-count" class="muted-inline"></span></div>
+            <p id="collaborator-scope-note" class="scope-note"></p>
+            <p id="collaborator-model-note" class="scope-note"></p>
+            <div id="collaborator-list" class="stack-list results-grid"></div>
+          </section>
+          <section data-page="growth" id="visibility-section" class="hidden">
+            <div class="section-toolbar"><p class="section-note">Review suggested actions, then save a baseline to track changes.</p><button id="snapshot-button" class="button button-primary" type="button">Save progress snapshot</button></div>
+            <div id="promotion-tracker-list" class="promotion-grid"></div>
+            <div class="section-head progress-heading"><h3>Progress over time</h3></div><div id="promotion-progress-list" class="stack-list progress-list"></div>
+          </section>
+          <section data-page="profile" id="page-profile" class="hidden">
+            <div id="profile-summary" class="profile-summary"></div>
+            <div class="two-column"><section><div class="section-head"><h3>Connected profiles</h3><span class="badge">Data sources</span></div><div id="connected-profile-list" class="stack-list"></div></section><section><div class="section-head"><h3>Projects</h3></div><div id="project-list" class="stack-list"></div></section></div>
+            <details class="profile-details"><summary>Account and profile details</summary><p id="current-user-summary" class="muted-inline"></p><div id="registered-user-card" class="hidden"></div></details>
+          </section>
+          <section data-page="models" id="page-models" class="hidden">
+            <section id="embedding-model-section" class="surface model-control-card"><p class="section-kicker">Personalization</p><h3>Recommendation model</h3><p class="section-note">Choose how scientific texts are compared. This selection applies to your recommendations across the workspace.</p><div class="scope-toggle model-toggle" aria-label="Embedding model"><button class="scope-button active" type="button" data-embedding-model="specter2" aria-pressed="true">SPECTER2</button><button class="scope-button" type="button" data-embedding-model="scibert" aria-pressed="false">SciBERT</button><button class="scope-button" type="button" data-embedding-model="hashing" aria-pressed="false">Hashing baseline</button></div><p id="embedding-model-note" class="scope-note"></p></section>
+            <section id="recommendation-engine"><div class="section-head"><h3>How your recommendations work</h3></div><div id="recommendation-summary-list" class="stack-list"></div></section>
+          </section>
+        </div>
+        <section data-page="researchers" id="page-researchers" class="hidden">
+          <form id="researcher-search-form" class="researcher-search-form"><label class="search-field"><svg class="icon"><use href="#i-search"/></svg><input id="search-input" type="search" aria-label="Researcher name" placeholder="Search by researcher name" required></label><button id="search-button" class="button button-primary" type="submit">Search OpenAlex</button></form>
+          <div class="section-head"><h3>Search results</h3><span id="researcher-count" class="badge">0 results</span></div><p id="search-hint" class="section-note" role="status">Search public academic profiles. Choose a result to explore their research.</p><div id="researcher-list" class="researcher-list results-grid"></div>
+        </section>
+        <footer class="workspace-footer"><span>Academic Visibility</span><span>Research data from OpenAlex &amp; ORCID</span></footer>
+      </main>
+    </div>
   </div>
-
-  <script>
-    const state = {
-      researchers: [],
-      selectedResearcherId: null,
-    };
-
-    const byId = (id) => document.getElementById(id);
-
-    async function fetchJson(url) {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Request failed: ${url}`);
-      }
-      return response.json();
-    }
-
-    function metricCard(label, value) {
-      return `
-        <article class="metric-card">
-          <span>${label}</span>
-          <strong>${value}</strong>
-        </article>
-      `;
-    }
-
-    function renderResearchers() {
-      const container = byId("researcher-list");
-      container.innerHTML = "";
-      byId("researcher-count").textContent = `${state.researchers.length} results`;
-
-      state.researchers.forEach((researcher) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `researcher-item ${state.selectedResearcherId === researcher.researcher_id ? "active" : ""}`;
-        button.innerHTML = `
-          <strong>${researcher.name}</strong>
-          <span>${researcher.affiliation}</span>
-          <span>${researcher.works_count} works • ${researcher.cited_by_count} citations</span>
-        `;
-        button.addEventListener("click", () => selectResearcher(researcher.researcher_id));
-        container.appendChild(button);
-      });
-    }
-
-    function renderDashboard(data) {
-      byId("dashboard-state").classList.add("hidden");
-      byId("dashboard-content").classList.remove("hidden");
-
-      byId("profile-name").textContent = data.researcher.name;
-      byId("profile-stage").textContent = data.analytics.ecr_status ? "ECR-like" : "Established";
-      byId("profile-summary").innerHTML = `
-        <div class="summary-block">
-          <span>Affiliation</span>
-          <strong>${data.researcher.affiliation}</strong>
-        </div>
-        <div class="summary-block">
-          <span>ORCID</span>
-          <strong>${data.researcher.orcid || "Not available"}</strong>
-        </div>
-        <div class="summary-block">
-          <span>Top topics</span>
-          <strong>${data.researcher.topics.map((topic) => topic.name).join(", ") || "Not available"}</strong>
-        </div>
-      `;
-
-      byId("metrics-grid").innerHTML = [
-        metricCard("Profile strength", data.analytics.profile_strength),
-        metricCard("Cold-start risk", data.analytics.cold_start_risk),
-        metricCard("Works", data.analytics.publication_count),
-        metricCard("Collab readiness", data.analytics.collaboration_readiness),
-      ].join("");
-
-      byId("works-list").innerHTML = data.recent_works.map((item) => `
-        <article class="feed-card">
-          <div class="feed-header">
-            <span class="type-pill">work</span>
-            <strong>${item.year || "n/a"}</strong>
-          </div>
-          <h4>${item.title}</h4>
-          <p>${item.venue || "Unknown venue"}</p>
-          <div class="feed-meta">${item.cited_by_count} citations</div>
-        </article>
-      `).join("");
-
-      byId("opportunity-list").innerHTML = data.opportunities.map((item) => `
-        <article class="feed-card">
-          <div class="feed-header">
-            <span class="type-pill">${item.opportunity_type}</span>
-            <strong>${item.score}</strong>
-          </div>
-          <h4>${item.title}</h4>
-          <p>${item.description}</p>
-          <div class="feed-meta">${item.region}</div>
-          <ul class="compact-list">
-            ${item.explanation.reasons.map((reason) => `<li>${reason}</li>`).join("")}
-          </ul>
-        </article>
-      `).join("");
-
-      byId("collaborator-list").innerHTML = data.collaborators.map((item) => `
-        <article class="feed-card">
-          <div class="feed-header">
-            <span class="type-pill">collaborator</span>
-            <strong>${item.score}</strong>
-          </div>
-          <h4>${item.name}</h4>
-          <p>${item.affiliation}</p>
-          <div class="feed-meta">${item.country_code || "Unknown country"}</div>
-          <ul class="compact-list">
-            ${item.explanation.reasons.map((reason) => `<li>${reason}</li>`).join("")}
-          </ul>
-        </article>
-      `).join("");
-    }
-
-    async function performSearch() {
-      const query = byId("search-input").value.trim();
-      if (!query) {
-        return;
-      }
-      const payload = await fetchJson(`/researchers/search?q=${encodeURIComponent(query)}`);
-      state.researchers = payload;
-      state.selectedResearcherId = null;
-      renderResearchers();
-      if (payload.length > 0) {
-        await selectResearcher(payload[0].researcher_id);
-      }
-    }
-
-    async function selectResearcher(researcherId) {
-      state.selectedResearcherId = researcherId;
-      renderResearchers();
-      const dashboard = await fetchJson(`/researchers/${researcherId}/dashboard`);
-      renderDashboard(dashboard);
-    }
-
-    byId("search-button").addEventListener("click", () => performSearch().catch(showError));
-    byId("search-input").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        performSearch().catch(showError);
-      }
-    });
-
-    function showError(error) {
-      byId("dashboard-state").innerHTML = `<h3>Unable to load dashboard</h3><p>${error.message}</p>`;
-    }
-  </script>
+  <dialog id="collaborator-profile-panel" class="profile-dialog" aria-labelledby="collaborator-profile-name">
+    <div class="dialog-heading"><div><p class="section-kicker">Researcher profile</p><h2 id="collaborator-profile-name">Selected collaborator</h2></div><button id="close-collaborator-profile" class="icon-button" type="button" aria-label="Close researcher profile">&times;</button></div>
+    <div id="collaborator-profile-content"></div>
+  </dialog>
 </body>
 </html>
-
-

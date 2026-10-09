@@ -5,22 +5,47 @@ services:
       - "8000:8000"
     environment:
       ENVIRONMENT: development
+      DATABASE_URL: postgresql://ecr:ecr@postgres:5432/ecr_mvp
+      HF_HOME: /models/huggingface
     volumes:
       - .:/app
+      - hf_cache:/models/huggingface
     depends_on:
       - postgres
       - redis
 
+  ml:
+    profiles:
+      - ml
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://ecr:ecr@postgres:5432/ecr_mvp
+      HF_HOME: /models/huggingface
+    volumes:
+      - .:/app
+      - hf_cache:/models/huggingface
+    depends_on:
+      - postgres
+
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: ecr_mvp
       POSTGRES_USER: ecr
       POSTGRES_PASSWORD: ecr
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+
+volumes:
+  postgres_data:
+  hf_cache:
