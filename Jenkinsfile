@@ -41,13 +41,7 @@ pipeline {
         stage('Container smoke test') {
             steps {
                 sh '''
-                    docker run --rm --entrypoint python "$IMAGE_NAME" -c '
-                        from fastapi.testclient import TestClient
-                        from app.main import app
-                        response = TestClient(app).get("/health")
-                        assert response.status_code == 200, response.text
-                        assert response.json()["status"] == "ok"
-                    '
+                    docker run --rm --entrypoint python "$IMAGE_NAME" -c 'from fastapi.testclient import TestClient; from app.main import app; response = TestClient(app).get("/health"); assert response.status_code == 200, response.text; assert response.json()["status"] == "ok"'
                 '''
             }
         }
