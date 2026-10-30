@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     promotion_action_store_path: Path = BASE_DIR / "data" / "promotion_actions.json"
     graphsage_embeddings_path: Path = BASE_DIR / "data" / "graphsage" / "model" / "graphsage_author_embeddings.npz"
     graphsage_model_path: Path = BASE_DIR / "data" / "graphsage" / "model" / "graphsage_model.pt"
+    collaborator_evaluation_path: Path = BASE_DIR / "data" / "evaluation" / "collaborators.json"
     relevance_weight: float = 0.5
     diversity_weight: float = 0.3
     ecr_weight: float = 0.2

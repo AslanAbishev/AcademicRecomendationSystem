@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 class OpenAlexClient:
@@ -13,6 +15,8 @@ class OpenAlexClient:
         self.base_url = "https://api.openalex.org"
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "ecr-visibility-mvp/0.2"})
+        retry = Retry(total=6, backoff_factor=2, status_forcelist=[429, 500, 502, 503, 504], respect_retry_after_header=True)
+        self.session.mount("https://", HTTPAdapter(max_retries=retry))
 
     def search_authors(
         self,
@@ -86,7 +90,7 @@ class OpenAlexClient:
     def iter_works(
         self,
         query: str,
-        per_page: int = 200,
+        per_page: int = 100,
         max_records: int = 1000,
         extra_filters: list[str] | None = None,
         from_year: int = 2020,
@@ -100,16 +104,18 @@ class OpenAlexClient:
         cursor = "*"
         yielded = 0
         while yielded < max_records:
+            params = {
+                "filter": ",".join(filters),
+                "sort": sort,
+                "per-page": min(per_page, max_records - yielded, 100),
+                "cursor": cursor,
+                "mailto": self.mailto,
+            }
+            if query:
+                params["search"] = query
             payload = self._get(
                 "/works",
-                params={
-                    "search": query,
-                    "filter": ",".join(filters),
-                    "sort": sort,
-                    "per-page": min(per_page, max_records - yielded),
-                    "cursor": cursor,
-                    "mailto": self.mailto,
-                },
+                params=params,
             )
             results = payload.get("results", [])
             if not results:

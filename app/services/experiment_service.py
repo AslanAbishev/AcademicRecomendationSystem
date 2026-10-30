@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from app.schemas import ExperimentPlanResponse
 
 
 class ExperimentService:
+    def get_collaborator_evaluation(self, path: Path) -> dict:
+        if not path.exists():
+            raise FileNotFoundError(path)
+        return json.loads(path.read_text(encoding="utf-8"))
+
     def get_ml_plan(self) -> ExperimentPlanResponse:
         return ExperimentPlanResponse(
             dataset_source="OpenAlex",
-            target_slice="Computer Science / AI / Cybersecurity, publication years 2020-2026",
+            target_slice="Recommender systems, publication years 2020-2025; 17,677 collected unique works locally",
             models=[
                 "Baseline: TF-IDF + cosine similarity",
                 "Baseline: BM25 information retrieval ranker",
@@ -42,6 +50,10 @@ class ExperimentService:
                 "Runtime recommendations now expose per-model scores, so TF-IDF, BM25, LSA/SVD, semantic hashing, and the hybrid ensemble can be compared.",
                 "SciBERT and SPECTER2 can be selected in the dashboard for pgvector-based paper recommendations.",
                 "PostgreSQL + pgvector stores persistent embeddings and supports vector similarity retrieval.",
-                "The same API can later export a 10k paper / 3k author dissertation dataset from OpenAlex.",
+                "The local author-linked OpenAlex corpus contains 17,677 unique works; cohort seeds are selected from train years only.",
+                "Crossref activity is stored by DOI with explicit provenance; Semantic Scholar enrichment requires API access when anonymous requests are rate limited.",
+                "Offline collaborator ranking compares random, popularity, TF-IDF, BM25, LSA/SVD, semantic hashing, hybrid and fairness reranking on identical train-only candidates.",
+                "The reported exposure gap uses train-period publication count as a low-visibility proxy, not verified career stage.",
+                "SciBERT, SPECTER2 and GraphSAGE still need separate evaluation under the same held-out ranking protocol.",
             ],
         )

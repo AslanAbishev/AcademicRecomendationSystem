@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import UTC, datetime
 import json
 import re
 
@@ -35,9 +36,10 @@ from app.services.ml_models import HybridSemanticScorer, HybridSimilarityScore
 from app.services.graphsage_ranker import GraphSAGERanker
 from app.services.research_database import ResearchDatabase
 from app.services.scientific_embeddings import ScientificEmbeddingModel
+from app.services.affiliations import best_affiliation, matching_raw_institution, publication_date, short_id
 
 
-CURRENT_YEAR = 2026
+CURRENT_YEAR = datetime.now(UTC).year
 MIN_COLLABORATOR_RELEVANCE = 0.03
 
 COUNTRY_ALIASES = {
@@ -205,6 +207,7 @@ class ECRRecommenderService:
     ) -> DashboardResponse:
         author = self.client.get_author(researcher_id)
         works = self.client.get_author_works(researcher_id, per_page=12)
+        author = self._author_with_recent_affiliation(author, works)
         profile = self._map_profile(author)
         recent_works = [self._map_work_summary(work) for work in works]
         author_text = self._build_author_text(author, works)
@@ -256,6 +259,13 @@ class ECRRecommenderService:
                 author = self.client.get_author_by_orcid(orcid_id)
                 author_id = author["id"].split("/")[-1]
                 works = self.client.get_author_works(author_id, per_page=12)
+                author = self._author_with_recent_affiliation(author, works)
+                if not profile.raw_profile.affiliation:
+                    profile = profile.model_copy(update={"affiliation": _extract_affiliation(author)})
+                if not profile.raw_profile.country and _extract_country(author):
+                    profile = profile.model_copy(update={"country": _extract_country(author)})
+                researcher_text = self._build_registered_profile_text(profile)
+                queries = self._build_registered_queries(profile)
                 author_text = self._build_registered_author_text(profile, author, works)
                 enriched_text = " ".join([researcher_text, author_text]).strip()
                 enriched_queries = self._merge_queries([*queries, *self._build_topic_queries(author, works)])
@@ -336,6 +346,10 @@ class ECRRecommenderService:
             collaborator_scope=collaborator_scope,
             embedding_model=embedding_model,
         )
+        if not profile.raw_profile.affiliation and dashboard.researcher.affiliation != profile.affiliation:
+            profile = profile.model_copy(update={"affiliation": dashboard.researcher.affiliation})
+        if not profile.raw_profile.country and dashboard.researcher.country_code:
+            profile = profile.model_copy(update={"country": dashboard.researcher.country_code})
         mode = "orcid_openalex" if profile.raw_profile.orcid_id and dashboard.recent_works else "cold_start"
         return UserCabinetResponse(
             registered_profile=profile,
@@ -362,6 +376,13 @@ class ECRRecommenderService:
             topics=_topic_names(author.get("topics", [])),
         )
 
+    def _author_with_recent_affiliation(self, author: dict, works: list[dict]) -> dict:
+        observation = best_affiliation(author, works)
+        if not observation:
+            return author
+        source = observation.get("source") or ("openalex_work_authorship" if observation.get("work_id") else "openalex_author_profile")
+        return {**author, "last_known_institutions": [observation], "affiliation_source": source, "affiliation_date": observation.get("publication_date") or ""}
+
     def _map_profile(self, author: dict) -> ResearcherProfile:
         ids = author.get("ids", {})
         summary_stats = author.get("summary_stats") or {}
@@ -372,6 +393,8 @@ class ECRRecommenderService:
             cited_by_count=int(author.get("cited_by_count", 0)),
             h_index=int(summary_stats.get("h_index", 0)),
             affiliation=_extract_affiliation(author),
+            affiliation_source=author.get("affiliation_source") or "openalex_author_profile",
+            affiliation_as_of=author.get("affiliation_date") or None,
             country_code=_extract_country(author),
             homepage_url=author.get("homepage_url"),
             orcid=ids.get("orcid"),
@@ -388,6 +411,8 @@ class ECRRecommenderService:
             cited_by_count=int(author.get("cited_by_count", profile.derived_metrics.get("citation_count", 0))),
             h_index=int(summary_stats.get("h_index", profile.derived_metrics.get("h_index", 0))),
             affiliation=profile.affiliation,
+            affiliation_source="registered_profile" if profile.raw_profile.affiliation else author.get("affiliation_source") or "openalex_author_profile",
+            affiliation_as_of=None if profile.raw_profile.affiliation else author.get("affiliation_date") or None,
             country_code=_normalize_country(profile.country) or _extract_country(author),
             homepage_url=profile.raw_profile.personal_website_url or author.get("homepage_url"),
             orcid=profile.raw_profile.orcid_id or ids.get("orcid"),
@@ -726,6 +751,18 @@ class ECRRecommenderService:
                 reference_country=reference_country,
             )
         ]
+        if collaborator_scope == "same_affiliation":
+            candidate_values = [
+                refreshed
+                for candidate in candidate_values[:60]
+                if self._candidate_matches_scope(
+                    refreshed := self._refresh_candidate_affiliation(candidate),
+                    collaborator_scope,
+                    current_author=current_author,
+                    reference_affiliation=reference_affiliation,
+                    reference_country=reference_country,
+                )
+            ]
         if not candidate_values:
             return []
 
@@ -749,6 +786,12 @@ class ECRRecommenderService:
         for idx in ranked_indexes:
             candidate = candidate_values[idx]
             candidate_id = candidate["id"].split("/")[-1]
+            if collaborator_scope != "same_affiliation":
+                candidate = self._refresh_candidate_affiliation(candidate)
+                if not self._candidate_matches_scope(
+                    candidate, collaborator_scope, current_author, reference_affiliation, reference_country
+                ):
+                    continue
             evidence_works = self._dedupe_works(evidence_map.get(candidate_id, []))
             score_parts = similarity_scores[idx]
             relevance = _safe_float(score_parts.hybrid)
@@ -785,6 +828,8 @@ class ECRRecommenderService:
                     researcher_id=candidate_id,
                     name=candidate.get("display_name", "Unknown author"),
                     affiliation=_extract_affiliation(candidate),
+                    affiliation_source=candidate.get("affiliation_source") or "openalex_author_profile",
+                    affiliation_as_of=candidate.get("affiliation_date") or None,
                     country_code=_extract_country(candidate),
                     score=final_score,
                     scope_match=self._scope_match_label(
@@ -869,6 +914,8 @@ class ECRRecommenderService:
                         }
                     ],
                     "affiliation_source": "raw_affiliation" if raw_affiliation_match else "openalex_institution",
+                    "affiliation_date": publication_date(work),
+                    "raw_affiliation_strings": raw_affiliations,
                     "topics": work_topics,
                 }
             )
@@ -959,12 +1006,49 @@ class ECRRecommenderService:
                 if item.get("display_name") and item.get("display_name") not in seen_topics
             ],
         ][:8]
-        if candidate.get("affiliation_source") == "raw_affiliation":
+        if candidate.get("affiliation_date", "") > merged.get("affiliation_date", "") or (
+            candidate.get("affiliation_date", "") == merged.get("affiliation_date", "")
+            and candidate.get("affiliation_source") == "raw_affiliation"
+        ):
             merged["last_known_institutions"] = candidate.get("last_known_institutions", [])
-            merged["affiliation_source"] = "raw_affiliation"
+            merged["affiliation_source"] = candidate.get("affiliation_source", "openalex_institution")
+            merged["affiliation_date"] = candidate.get("affiliation_date", "")
         if _extract_affiliation(merged) == "Unknown affiliation" and _extract_affiliation(candidate) != "Unknown affiliation":
             merged["last_known_institutions"] = candidate.get("last_known_institutions", [])
         return merged
+
+    def _refresh_candidate_affiliation(self, candidate: dict) -> dict:
+        candidate_id = short_id(candidate.get("id"))
+        try:
+            author = self.client.get_author(candidate_id)
+        except Exception:
+            return candidate
+        if short_id(author.get("id")) != candidate_id:
+            return candidate
+        current = next(
+            (item for item in author.get("last_known_institutions") or [] if item.get("display_name")),
+            None,
+        )
+        if not current:
+            return candidate
+        raw_match = matching_raw_institution(candidate, author.get("last_known_institutions") or [])
+        if raw_match:
+            return {
+                **candidate,
+                "last_known_institutions": [raw_match],
+                "affiliation_source": "raw_affiliation_confirmed",
+            }
+        # Recent work authorship is dated evidence; author-profile institutions have no date.
+        if candidate.get("affiliation_date", "") >= f"{CURRENT_YEAR - 2}-01-01":
+            return candidate
+        if _affiliations_match(_extract_affiliation(candidate), current["display_name"]):
+            return candidate
+        return {
+            **candidate,
+            "last_known_institutions": [current],
+            "affiliation_source": "openalex_author_profile",
+            "affiliation_date": "",
+        }
 
     def _dedupe_works(self, works: list[dict]) -> list[dict]:
         deduped = []
@@ -1157,6 +1241,11 @@ class ECRRecommenderService:
         if evidence_works:
             title = evidence_works[0].get("title") or "recent OpenAlex work"
             reasons.append(f"Found through real OpenAlex work: {title}")
+        if candidate.get("affiliation_date"):
+            source = "raw affiliation text" if candidate.get("affiliation_source") in {"raw_affiliation", "raw_affiliation_confirmed"} else "OpenAlex authorship"
+            reasons.append(f"Affiliation from {source} dated {candidate['affiliation_date']}; it may have changed since publication.")
+        elif candidate.get("affiliation_source") == "openalex_author_profile":
+            reasons.append("Affiliation from the OpenAlex author profile; publication date is not available.")
         if _normalize_country(_extract_country(candidate)):
             reasons.append(f"Candidate country: {_normalize_country(_extract_country(candidate))}")
         if diversity >= 0.55:

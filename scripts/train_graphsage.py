@@ -26,7 +26,15 @@ def train_graphsage(args: argparse.Namespace) -> None:
     graph_dir = Path(args.graph_dir)
     validation_graph_dir = Path(args.validation_graph_dir) if args.validation_graph_dir else None
     test_graph_dir = Path(args.test_graph_dir) if args.test_graph_dir else None
-    author_nodes = _merge_author_nodes(graph_dir, validation_graph_dir, test_graph_dir)
+    validation_labels = Path(args.validation_labels) if args.validation_labels else None
+    test_labels = Path(args.test_labels) if args.test_labels else None
+    if validation_graph_dir and validation_labels or test_graph_dir and test_labels:
+        raise ValueError("Use either a future graph or frozen pair labels for each evaluation period")
+    author_nodes = _merge_author_nodes(graph_dir)
+    if validation_graph_dir or test_graph_dir or validation_labels or test_labels:
+        # OpenAlex citation totals are read at collection time and include future citations.
+        for author in author_nodes:
+            author["cited_by_count"] = 0
     author_to_index = {item["author_id"]: index for index, item in enumerate(author_nodes)}
     feature_config = _feature_config(author_nodes)
     features = _author_features(author_nodes, feature_config)
@@ -75,24 +83,25 @@ def train_graphsage(args: argparse.Namespace) -> None:
             args.seed,
         ),
     }
-    if validation_graph_dir:
-        validation_edges = _edge_index(
-            validation_graph_dir / "author_edges.csv",
-            author_to_index,
-            required=False,
-        )
+    temporal_support: dict[str, int] = {}
+    if validation_graph_dir or validation_labels:
+        validation_edges = (_label_edge_index(validation_labels, author_to_index) if validation_labels
+                            else _edge_index(validation_graph_dir / "author_edges.csv", author_to_index, required=False))
+        temporal_support["validation_known_author_edges"] = int(validation_edges.shape[1])
+        validation_edges = _novel_edges(validation_edges, edge_index)
+        temporal_support["validation_novel_edges"] = int(validation_edges.shape[1])
         metrics["validation"] = _link_prediction_auc(
             embeddings,
             validation_edges,
             edges,
             args.seed + 1,
         )
-    if test_graph_dir:
-        test_edges = _edge_index(
-            test_graph_dir / "author_edges.csv",
-            author_to_index,
-            required=False,
-        )
+    if test_graph_dir or test_labels:
+        test_edges = (_label_edge_index(test_labels, author_to_index) if test_labels
+                      else _edge_index(test_graph_dir / "author_edges.csv", author_to_index, required=False))
+        temporal_support["test_known_author_edges"] = int(test_edges.shape[1])
+        test_edges = _novel_edges(test_edges, edge_index)
+        temporal_support["test_novel_edges"] = int(test_edges.shape[1])
         metrics["test"] = _link_prediction_auc(
             embeddings,
             test_edges,
@@ -113,9 +122,13 @@ def train_graphsage(args: argparse.Namespace) -> None:
                 "embedding_dim": args.embedding_dim,
                 "objective": "co-author link prediction with negative sampling",
                 "metrics": metrics,
+                "temporal_support": temporal_support,
                 "training_graph": str(graph_dir),
                 "validation_graph": str(validation_graph_dir) if validation_graph_dir else None,
                 "test_graph": str(test_graph_dir) if test_graph_dir else None,
+                "validation_labels": str(validation_labels) if validation_labels else None,
+                "test_labels": str(test_labels) if test_labels else None,
+                "temporal_evaluation": "train authors/features only; current citation totals excluded; future-only authors out of scope",
                 "feature_config": feature_config,
             },
             ensure_ascii=False,
@@ -205,6 +218,20 @@ def _edge_index(
     return np.array(edges, dtype="int64").T if edges else np.empty((2, 0), dtype="int64")
 
 
+def _label_edge_index(path: Path, author_to_index: dict[str, int]) -> np.ndarray:
+    edges: list[tuple[int, int]] = []
+    with path.open(encoding="utf-8") as source:
+        for line in source:
+            if not line.strip():
+                continue
+            pair = json.loads(line)
+            left = author_to_index.get(pair["author_a"])
+            right = author_to_index.get(pair["author_b"])
+            if left is not None and right is not None and left != right:
+                edges.append((left, right))
+    return np.asarray(edges, dtype="int64").T if edges else np.empty((2, 0), dtype="int64")
+
+
 def _link_prediction_auc(
     embeddings: np.ndarray,
     positive_edges: np.ndarray,
@@ -243,6 +270,15 @@ def _link_prediction_auc(
     return round(float(comparisons + 0.5 * ties), 4)
 
 
+def _novel_edges(future_edges: np.ndarray, training_edges: np.ndarray) -> np.ndarray:
+    known = {tuple(sorted((int(left), int(right)))) for left, right in training_edges.T}
+    novel = [
+        (int(left), int(right)) for left, right in future_edges.T
+        if tuple(sorted((int(left), int(right)))) not in known
+    ]
+    return np.asarray(novel, dtype="int64").T if novel else np.empty((2, 0), dtype="int64")
+
+
 def _edge_scores(embeddings: np.ndarray, edges: np.ndarray) -> np.ndarray:
     return (embeddings[edges[0]] * embeddings[edges[1]]).sum(axis=1)
 
@@ -252,6 +288,8 @@ def main() -> None:
     parser.add_argument("--graph-dir", default="data/graphsage")
     parser.add_argument("--validation-graph-dir")
     parser.add_argument("--test-graph-dir")
+    parser.add_argument("--validation-labels", help="Frozen future coauthor pairs, never used in training")
+    parser.add_argument("--test-labels", help="Frozen final test coauthor pairs, never used in training")
     parser.add_argument("--output-dir", default="data/graphsage")
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--hidden-dim", type=int, default=64)

@@ -29,6 +29,8 @@ class ResearcherProfile(BaseModel):
     cited_by_count: int
     h_index: int
     affiliation: str
+    affiliation_source: str | None = None
+    affiliation_as_of: str | None = None
     country_code: str | None = None
     homepage_url: str | None = None
     orcid: str | None = None
@@ -77,6 +79,8 @@ class CollaboratorRecommendation(BaseModel):
     researcher_id: str
     name: str
     affiliation: str
+    affiliation_source: str | None = None
+    affiliation_as_of: str | None = None
     country_code: str | None = None
     score: float
     scope_match: str = "global"

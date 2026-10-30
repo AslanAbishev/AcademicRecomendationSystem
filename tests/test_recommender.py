@@ -403,6 +403,47 @@ def test_registered_orcid_dashboard_preserves_registered_affiliation():
     assert cabinet.personalized_dashboard.researcher.country_code == "KZ"
 
 
+def test_existing_account_refreshes_inferred_affiliation_from_raw_authorship():
+    class Client(FakeOpenAlexClient):
+        def get_author(self, author_id):
+            author = super().get_author(author_id)
+            author["last_known_institutions"] = [
+                {"display_name": "Astana Medical University", "country_code": "KZ"},
+                {"display_name": "Astana IT University", "country_code": "KZ"},
+            ]
+            return author
+
+        def get_author_works(self, author_id, per_page=12):
+            works = super().get_author_works(author_id, per_page)
+            works[0]["publication_year"] = 2026
+            works[0]["authorships"] = [{
+                "author": {"id": "https://openalex.org/A123"},
+                "institutions": [{"display_name": "Astana Medical University", "country_code": "KZ"}],
+                "raw_affiliation_strings": ["School of Software Engineering, Astana IT University"],
+            }]
+            return works
+
+    service = ECRRecommenderService(client=Client())
+    profile = RegisteredResearcherProfile(
+        profile_id="stale-profile", created_at="2026-04-29T10:00:00+00:00",
+        full_name="Researcher", email="researcher@example.com",
+        affiliation="Astana Medical University", position_title="Researcher",
+        academic_level="ECR", academic_field="Computer Science", country="KZ",
+        profile_completeness=0.5, visibility_score=0.5,
+        interest_embedding_text="computer science", raw_profile=ResearcherRegistrationRequest(
+            full_name="Researcher", email="researcher@example.com",
+            orcid_id="0000-0000-0000-0000", academic_field="Computer Science",
+        ),
+    )
+
+    cabinet = service.get_user_cabinet(profile, top_k=2, collaborator_scope="same_affiliation")
+
+    assert cabinet.registered_profile.affiliation == "Astana IT University"
+    assert cabinet.personalized_dashboard.researcher.affiliation == "Astana IT University"
+    assert cabinet.personalized_dashboard.researcher.affiliation_source == "raw_affiliation_confirmed"
+    assert profile.affiliation == "Astana Medical University"
+
+
 def test_same_scope_uses_openalex_filters_before_candidate_extraction():
     service = ECRRecommenderService(client=FakeOpenAlexClientWithScopedWorks())
     same_country = service.get_dashboard("A123", top_k=3, collaborator_scope="same_country")

@@ -120,6 +120,36 @@ function modelScoreGrid(modelScores = []) {
   `;
 }
 
+async function loadEvaluationResults() {
+  const container = byId("evaluation-results");
+  try {
+    const report = await fetchJson("/experiments/collaborator-evaluation");
+    const labels = {
+      random: "Random",
+      popularity: "Popularity",
+      tfidf: "TF-IDF",
+      bm25: "BM25",
+      lsa_svd: "LSA/SVD",
+      semantic_hashing: "Semantic hashing",
+      hybrid: "Hybrid",
+      fairness_reranked_hybrid: "Fairness reranked hybrid",
+    };
+    const rows = Object.entries(labels).filter(([key]) => report.models[key]).map(([key, label]) => {
+      const values = report.models[key];
+      return `<tr><th scope="row">${label}</th><td>${Number(values.precision_at_k).toFixed(3)}</td><td>${Number(values.recall_at_k).toFixed(3)}</td><td>${Number(values.ndcg_at_k).toFixed(3)}</td><td>${Number(values.coverage).toFixed(3)}</td><td>${Number(values.fairness_exposure_gap).toFixed(5)}</td></tr>`;
+    }).join("");
+    container.innerHTML = `
+      <p class="section-note">${report.train_works} training works · ${report.test_works} test works · ${report.evaluated_authors} authors · ${report.held_out_links_in_evaluated_queries} future links · ${report.candidate_authors} candidates</p>
+      <div class="evaluation-table-scroll"><table class="evaluation-table"><thead><tr><th>Ranker</th><th>Precision@${report.k}</th><th>Recall@${report.k}</th><th>NDCG@${report.k}</th><th>Coverage</th><th>Exposure gap</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="section-note">Exposure gap compares low and high publication-count groups; it does not verify career stage. SciBERT, SPECTER2 and GraphSAGE have not yet been tested under this ranking protocol.</p>
+    `;
+  } catch (error) {
+    container.textContent = error.status === 404
+      ? "No benchmark report yet. Collect the research dataset and run the offline evaluation described in the project documentation."
+      : "Model comparison could not be loaded right now.";
+  }
+}
+
 function splitCsv(value) {
   return value
     .split(",")
@@ -411,6 +441,7 @@ function renderDashboard(data) {
       </div>
       <h4>${item.name}</h4>
       <p>${item.affiliation}</p>
+      <div class="feed-meta">${affiliationEvidence(item)}</div>
       <div class="feed-meta">${item.country_code || "Unknown country"}</div>
       <div class="feed-meta">Filter match: ${item.scope_match || scopeLabel(state.collaboratorScope)}</div>
       <ul class="compact-list">
@@ -450,6 +481,15 @@ function shortList(items, limit = 4) {
   return items.slice(0, limit).join(", ") || "Not available";
 }
 
+function affiliationEvidence(item) {
+  if (item.affiliation_source === "registered_profile") return "Affiliation supplied by researcher";
+  if (item.affiliation_source === "raw_affiliation_confirmed" || item.affiliation_source === "raw_affiliation") {
+    return `Publication affiliation text${item.affiliation_as_of ? `: ${item.affiliation_as_of}` : ""}`;
+  }
+  if (item.affiliation_as_of) return `OpenAlex publication evidence: ${item.affiliation_as_of}`;
+  return "OpenAlex author profile; date unverified";
+}
+
 function renderCollaboratorProfile(data) {
   const panel = byId("collaborator-profile-panel");
   const content = byId("collaborator-profile-content");
@@ -460,6 +500,7 @@ function renderCollaboratorProfile(data) {
       <div class="summary-block">
         <span>Affiliation</span>
         <strong>${data.researcher.affiliation}</strong>
+        <small>${affiliationEvidence(data.researcher)}</small>
       </div>
       <div class="summary-block">
         <span>Metrics</span>
@@ -1143,3 +1184,4 @@ function showError(error) {
 }
 
 bootstrapAccess().catch(showError);
+loadEvaluationResults();

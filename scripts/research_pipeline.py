@@ -6,6 +6,7 @@ from itertools import combinations
 import json
 from pathlib import Path
 import sys
+from datetime import UTC, datetime
 from uuid import uuid4
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -34,8 +35,17 @@ def collect_openalex(args: argparse.Namespace) -> None:
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    seen: set[str] = set()
+    if args.resume and output_path.exists():
+        with output_path.open(encoding="utf-8") as existing:
+            for line in existing:
+                if line.strip():
+                    work_id = (json.loads(line).get("id") or "").split("/")[-1]
+                    if work_id:
+                        seen.add(work_id)
     count = 0
-    with output_path.open("w", encoding="utf-8") as file:
+    mode = "a" if args.resume else "w"
+    with output_path.open(mode, encoding="utf-8") as file:
         for work in client.iter_works(
             args.query,
             per_page=args.per_page,
@@ -44,21 +54,28 @@ def collect_openalex(args: argparse.Namespace) -> None:
             to_year=args.to_year,
             extra_filters=args.filter,
         ):
+            work_id = (work.get("id") or "").split("/")[-1]
+            if not work_id or work_id in seen:
+                continue
+            seen.add(work_id)
             file.write(json.dumps(work, ensure_ascii=False) + "\n")
             if args.db:
                 db.upsert_work(work)
             count += 1
             if count % 100 == 0:
                 print(f"collected={count}")
+                file.flush()
 
     result = {
         "status": "collected",
         "works": count,
+        "unique_works_in_file": len(seen),
         "output": str(output_path),
         "loaded_to_db": bool(args.db),
         "query": args.query,
         "from_year": args.from_year,
         "to_year": args.to_year,
+        "collected_at_utc": datetime.now(UTC).isoformat(),
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
@@ -86,7 +103,7 @@ def build_graph(args: argparse.Namespace) -> None:
         for authorship in work.get("authorships", []):
             author = authorship.get("author") or {}
             author_id = _short_id(author.get("id"))
-            if not author_id:
+            if not author_id or author_id in author_list:
                 continue
             author_ids.setdefault(author_id, len(author_ids))
             author_list.append(author_id)
@@ -97,16 +114,14 @@ def build_graph(args: argparse.Namespace) -> None:
                 {
                     "author_id": author_id,
                     "display_name": author.get("display_name", "Unknown author"),
-                    "works_count": int(author.get("works_count", 0) or 0),
-                    "cited_by_count": int(author.get("cited_by_count", 0) or 0),
+                    "works_count": 0,
+                    "cited_by_count": 0,
                     "country_code": countries[0] if countries else "",
                     "affiliation": institutions[0].get("display_name", "") if institutions else "",
                 },
             )
-            if not author.get("works_count"):
-                author_features[author_id]["works_count"] += 1
-            if not author.get("cited_by_count"):
-                author_features[author_id]["cited_by_count"] += int(work.get("cited_by_count", 0) or 0)
+            author_features[author_id]["works_count"] += 1
+            author_features[author_id]["cited_by_count"] += int(work.get("cited_by_count", 0) or 0)
             heterogeneous_edges.append({"source": author_id, "target": work_id, "type": "authored"})
 
         for left, right in combinations(sorted(set(author_list)), 2):
@@ -189,12 +204,13 @@ def main() -> None:
     collect = subparsers.add_parser("collect-openalex", help="Collect a real OpenAlex temporal dataset.")
     collect.add_argument("--query", default=DEFAULT_QUERY)
     collect.add_argument("--output", default="data/openalex_temporal_dataset.jsonl")
-    collect.add_argument("--max-works", type=int, default=1000)
+    collect.add_argument("--max-works", type=int, default=12000)
     collect.add_argument("--per-page", type=int, default=200)
     collect.add_argument("--from-year", type=int, default=2020)
     collect.add_argument("--to-year", type=int, default=2026)
     collect.add_argument("--filter", action="append", default=[])
     collect.add_argument("--db", action="store_true", help="Also load records into PostgreSQL.")
+    collect.add_argument("--resume", action="store_true", help="Append only new OpenAlex IDs to an existing output file.")
 
     graph = subparsers.add_parser("build-graph", help="Export GraphSAGE-ready graph files from JSONL dataset.")
     graph.add_argument("--input", default="data/openalex_temporal_dataset.jsonl")

@@ -8,6 +8,7 @@ from uuid import uuid4
 import requests
 
 from app.clients.openalex import OpenAlexClient
+from app.services.affiliations import best_affiliation
 from app.schemas import DomainCandidate, RegisteredResearcherProfile, ResearcherRegistrationRequest
 
 
@@ -48,7 +49,7 @@ class RegistrationService:
 
     def register(self, payload: ResearcherRegistrationRequest) -> RegisteredResearcherProfile:
         derived_metrics, profile_data_sources, openalex_author, openalex_works = self._derive_metrics(payload)
-        profile_values = self._profile_values(payload, openalex_author)
+        profile_values = self._profile_values(payload, openalex_author, openalex_works)
         openalex_topics = self._openalex_topic_names(openalex_author, openalex_works)
         research_keywords = _clean_items(payload.research_keywords) or openalex_topics[:6]
         thematic_clusters = _clean_items(payload.thematic_clusters) or openalex_topics[:4]
@@ -139,8 +140,8 @@ class RegistrationService:
         sources = ["registration_form", "openalex_orcid"]
         return metrics, sources, author, works
 
-    def _profile_values(self, payload: ResearcherRegistrationRequest, author: dict | None) -> dict[str, str]:
-        affiliation, country = self._openalex_affiliation(author)
+    def _profile_values(self, payload: ResearcherRegistrationRequest, author: dict | None, works: list[dict]) -> dict[str, str]:
+        affiliation, country = self._openalex_affiliation(author, works)
         academic_field = payload.academic_field.strip() or self._openalex_primary_topic(author) or "Research"
         return {
             "full_name": payload.full_name.strip() or (author or {}).get("display_name", "Researcher"),
@@ -151,13 +152,12 @@ class RegistrationService:
             "country": payload.country.strip() or country or "Unknown country",
         }
 
-    def _openalex_affiliation(self, author: dict | None) -> tuple[str, str]:
+    def _openalex_affiliation(self, author: dict | None, works: list[dict]) -> tuple[str, str]:
         if not author:
             return "", ""
-        institutions = author.get("last_known_institutions") or []
-        if not institutions:
+        institution = best_affiliation(author, works)
+        if not institution:
             return "", ""
-        institution = institutions[0]
         return institution.get("display_name", ""), institution.get("country_code", "")
 
     def _openalex_primary_topic(self, author: dict | None) -> str:

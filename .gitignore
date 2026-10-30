@@ -1,6 +1,10 @@
 venv/
+.venv*/
+.pydeps/
 __pycache__/
 .pytest_cache/
+.pytest_tmp/
+.temp_tests/
 *.pyc
 .env
 data/registered_profiles.json
@@ -8,7 +12,10 @@ data/users.json
 data/promotion_snapshots.json
 data/promotion_actions.json
 data/*.jsonl
+data/multifield/
 data/splits/
+data/evaluation/
+data/models/
 data/embeddings/
 data/graphsage/
 *.npz

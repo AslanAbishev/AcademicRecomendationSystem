@@ -164,6 +164,14 @@ def get_experiment_ml_plan():
     return experiment_service.get_ml_plan()
 
 
+@app.get("/experiments/collaborator-evaluation")
+def get_collaborator_evaluation():
+    try:
+        return experiment_service.get_collaborator_evaluation(settings.collaborator_evaluation_path)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run the offline collaborator evaluation first") from exc
+
+
 @app.get("/experiments/dataset-stats")
 def get_research_dataset_stats():
     try:
